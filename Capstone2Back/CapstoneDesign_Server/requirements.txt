@@ -1,0 +1,29 @@
+# --- Core Web Framework ---
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+python-dotenv
+
+# --- AI & LLM (Inference) ---
+torch --index-url https://download.pytorch.org/whl/cpu
+transformers
+peft
+accelerate
+sentencepiece
+huggingface-hub
+google-generativeai
+
+# --- Computer Vision & Media Analysis ---
+mediapipe
+opencv-python-headless
+ultralytics
+numpy
+
+# --- Audio Analysis (STT & Prosody) ---
+openai-whisper
+praat-parselmouth
+
+# --- Document & Data Analysis ---
+python-pptx
+scikit-learn

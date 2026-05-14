@@ -1,0 +1,143 @@
+:root {
+  --bg-page: #f4f6fb;
+  --bg-muted: #eef1f8;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --primary: #5d5fef;
+  --primary-hover: #4f52e0;
+  --primary-soft: #ebe8ff;
+  --primary-glow: rgba(93, 95, 239, 0.12);
+  --accent-blue: #2563eb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.1);
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --font: "Inter", "Noto Sans KR", system-ui, sans-serif;
+  --content-pad-x: clamp(1rem, 4vw, 2rem);
+  /* Typography — 페이지·폼·랜딩 공통 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-nav: 1.0625rem;
+  --text-nav-lg: 1.125rem;
+  --text-title-sm: clamp(1.35rem, 2.5vw, 1.75rem);
+  --text-hero: clamp(1.75rem, 5vw, 2.5rem);
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+  /* 상단바: 로그인/회원가입 CTA 동일 폭 */
+  --shell-cta-min: 7.5rem;
+  --shell-actions-min: 8.5rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg-page);
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, rgba(93, 95, 239, 0.09), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(37, 99, 235, 0.06), transparent 50%),
+    radial-gradient(800px 400px at 50% 100%, rgba(93, 95, 239, 0.05), transparent 45%);
+  background-attachment: fixed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-inner {
+  width: 100%;
+  max-width: min(100%, 46rem);
+  margin: 0 auto;
+  padding: 2rem var(--content-pad-x) 3.25rem;
+  flex: 1;
+}
+
+@media (min-width: 640px) {
+  .page-inner {
+    max-width: min(100%, 50rem);
+  }
+}
+
+@media (min-width: 900px) {
+  .page-inner {
+    max-width: min(100%, 54rem);
+    padding-top: 2.25rem;
+    padding-bottom: 4rem;
+  }
+
+  .page-inner--wide {
+    max-width: min(100%, 72rem);
+  }
+}
+
+@media (min-width: 1280px) {
+  .page-inner--wide {
+    max-width: min(100%, 82rem);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

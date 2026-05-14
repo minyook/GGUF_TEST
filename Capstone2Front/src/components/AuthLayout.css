@@ -1,0 +1,27 @@
+/* 인증 페이지: 중앙 폼 패널 (상단·하단은 AppShell과 동일한 shell) */
+
+.shell__main--auth {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--content-pad-x);
+  background: var(--bg-page);
+}
+
+.auth-web__panel {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: clamp(1.75rem, 4vw, 2.25rem);
+  box-shadow: var(--shadow-panel);
+}
+
+.auth-web__panel--wide {
+  max-width: 44rem;
+}
