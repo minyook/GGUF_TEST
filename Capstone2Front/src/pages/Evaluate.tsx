@@ -253,7 +253,9 @@ export function Evaluate() {
           : "/analysis"
       );
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "서버와 연결할 수 없습니다.";
+      const msg = error instanceof Error 
+        ? (error.message === "Failed to fetch" ? "서버와 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요." : error.message)
+        : "서버와 연결할 수 없습니다.";
       setSubmitError(msg);
     } finally {
       setIsSubmitting(false);

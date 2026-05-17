@@ -79,26 +79,32 @@ class FeedbackEngine:
 [출력 규칙]
 1. 반드시 한국어로 답변하십시오.
 2. 가독성을 위해 마크다운(Markdown) 형식을 사용하십시오.
-3. 각 분석 항목별로 소제목(##)을 사용하고, 상세 내용은 글머리 기호(-)를 사용하여 5줄 이상 작성하십시오.
-4. 문장 사이에 적절한 줄바꿈을 적용하여 읽기 편하게 만드십시오.
-5. 마지막에는 종합적인 개선 방향을 '총평'으로 요약하십시오.
+3. 다음 3가지 영역(I, II, III)을 대제목(##)으로 하여 분석하십시오:
+   ## I. 내용 및 시각화 (Content & Viz)
+   ## II. 전달의 안정성 (Stability)
+   ## III. 시각적 비언어 (Non-verbal)
+4. 각 분석 항목별로 상세 내용은 글머리 기호(-)를 사용하여 3줄 이상 작성하십시오.
+5. 마지막에는 종합적인 개선 방향과 [보너스] 감점 및 가산점 예상(시간 미준수 시 -5점, Q&A 대응 시 +5점 가산점)을 포함하여 '총평'으로 요약하십시오.
 
 [|user|]
 제시된 기술 분석 데이터(PPT, Whisper, YOLO, MediaPipe)를 기반으로 분석 보고서를 작성해줘.
 [{project_name}] 
-- PPT: 텍스트 면적 {face_rate:.1f}%, 이미지 포함 여부(있음)
-- Whisper(음성): 필러워드 분당 {speed:.1f}회
-- YOLO(자세): 상체 흔들림 분석 결과(높음)
-- MediaPipe(시선): 정면 응시율 {gaze:.1f}%
+- PPT: {ppt_summary}
+- Whisper(음성): 말하기 속도 {speed:.1f}x, {voice_summary}
+- YOLO(자세): 제스처 상태({gesture_status})
+- MediaPipe(시선): 정면 응시율 {face_rate:.1f}%, 미소 점수 {smile_score:.1f}%
 
 [|assistant|]
 """
         # 데이터 매핑
         prompt = prompt_style.format(
             project_name=project_name,
+            ppt_summary=analysis_summary.get('ppt_summary', '데이터 없음'),
+            voice_summary=analysis_summary.get('voice_summary', ''),
+            speed=analysis_summary.get('avg_speed', 1.0),
+            gesture_status=analysis_summary.get('gesture_status', '정적임'),
             face_rate=analysis_summary.get('face_detection_rate', 50.0),
-            speed=analysis_summary.get('avg_speed', 5.0),
-            gaze=analysis_summary.get('gaze_score', 0.5) * 100
+            smile_score=analysis_summary.get('smile_score', 0.0) * 100
         )
 
         if self.provider == "exaone" and self.local_model:
@@ -128,7 +134,7 @@ class FeedbackEngine:
             return "모델 로드 오류로 피드백을 생성할 수 없습니다."
 
     def _find_project_json_files(self, project_name: str) -> Dict[str, Path]:
-        base_dir = Path("Capstone2Back/CapstoneDesign_Server/analysis_json")
+        base_dir = Path("analysis_json")
         paths = {}
         mapping = {"total": "total_json", "face": "MediaPipe_json", "gesture": "Yolo_json", "voice": "Voice_json", "ppt": "ppt_json"}
         for key, folder in mapping.items():
@@ -149,6 +155,26 @@ class FeedbackEngine:
         return detailed
 
     def generate_timeline_feedback(self, aligned_data: list, project_name: str, persona: str = "soft") -> Dict[str, str]:
-        return {"0.0": "학습된 AI 코치가 실시간 분석을 시작합니다."}
+        feedback = {}
+        for segment in aligned_data:
+            time_key = f"{segment['start']:.1f}"
+            vision = segment.get("vision_avg", {})
+            speed = segment.get("speech_rate_cps", 0)
+            
+            tips = []
+            if vision.get("gaze_h", 0) > 0.1 or vision.get("gaze_h", 0) < -0.1:
+                tips.append("시선이 흔들립니다. 정면을 응시해주세요.")
+            if vision.get("smile", 0) < 0.2:
+                tips.append("표정이 다소 굳어있습니다. 미소를 지어보세요.")
+            if speed > 7.0:
+                tips.append("말의 속도가 조금 빠릅니다. 천천히 말해보세요.")
+            
+            if tips:
+                feedback[time_key] = " ".join(tips)
+        
+        if not feedback:
+            feedback["0.0"] = "안정적인 발표를 진행 중입니다."
+            
+        return feedback
 
 feedback_engine = FeedbackEngine(provider="exaone")

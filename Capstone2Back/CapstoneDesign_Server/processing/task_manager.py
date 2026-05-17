@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import time as timer 
 import traceback
 import json
@@ -142,15 +143,20 @@ def run_analysis_task(job_id: str, video_path: Path, frame_dir: Path, video_dir:
 
         # PPT 분석 결과 수신
         ppt_summary = "PPT 분석 데이터 없음"
-        ppt_result_path = Path("ppt-analysis-engine/data/results/example.json")
-        if ppt_result_path.exists():
-            try:
-                with open(ppt_result_path, 'r', encoding='utf-8') as f:
-                    ppt_data = json.load(f)
-                    ppt_summary = (f"슬라이드 수: {ppt_data.get('total_slides', 0)}, "
-                                   f"주요 키워드: {', '.join(ppt_data.get('keywords', []))}")
-            except Exception:
-                ppt_summary = "PPT 결과 파일 읽기 실패"
+        ppt_json_dir = Path("analysis_json/ppt_json")
+        if ppt_json_dir.exists():
+            import glob
+            # 가장 최근에 분석된 PPT json을 찾습니다 (또는 파일명으로 매핑)
+            ppt_files = glob.glob(str(ppt_json_dir / "*.json"))
+            if ppt_files:
+                ppt_result_path = Path(max(ppt_files, key=os.path.getctime))
+                try:
+                    with open(ppt_result_path, 'r', encoding='utf-8') as f:
+                        ppt_data = json.load(f)
+                        ppt_summary = (f"슬라이드 수: {ppt_data.get('total_slides', 0)}, "
+                                       f"주요 키워드: {', '.join(ppt_data.get('keywords', []))}")
+                except Exception:
+                    ppt_summary = "PPT 결과 파일 읽기 실패"
 
         # [신규] 분석 요약 데이터 생성 (Feedback Engine 및 UI용)
         active_gestures = ["오른손으로 왼쪽 가리키기", "왼손으로 오른쪽 가리키기", "손을 높여 강조", "활발한 손동작"]

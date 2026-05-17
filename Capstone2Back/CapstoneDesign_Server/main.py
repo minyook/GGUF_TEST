@@ -1,6 +1,7 @@
 import os
 import uvicorn
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import uuid 
 import asyncio
 import importlib.util
@@ -254,8 +255,6 @@ async def chat_with_ai_file(
 
     # 3. Gemini 답변 생성 (파일 객체 포함)
     updated_history = chat_with_gemini(message, history, attachments=[gemini_file])
-    
-    return {"chat_history": updated_history}
     
     return {"chat_history": updated_history}
 

@@ -28,10 +28,11 @@ export function Analysis() {
   // 🌟 슬라이드 관련 상태
   const [tipPageIndex, setTipPageIndex] = useState(0);
 
-  const scores = useMemo<StoredRubricScores | null>(
-    () => loadScoresForView(scopeId, submissionId),
-    [scopeId, submissionId, fsRevision]
-  );
+  const [scores, setScores] = useState<StoredRubricScores | null>(null);
+
+  useEffect(() => {
+    setScores(loadScoresForView(scopeId, submissionId));
+  }, [scopeId, submissionId, fsRevision]);
 
   // 🌟 타임라인 팁을 3개씩 묶기
   const tipChunks = useMemo(() => {
@@ -166,32 +167,48 @@ export function Analysis() {
           if (resData.analysis_summary) {
             const summary = resData.analysis_summary;
             import("../data/analysisResultStorage").then(({ saveAnalysisResultForSubmission }) => {
-              // 실제 분석 데이터를 기반으로 점수 계산
-              const gazeScoreVal = Math.round(summary.gaze_score * 100);
-              const smileScoreVal = Math.round(summary.smile_score * 100);
-              const gestureScoreVal = summary.gesture_status === "활발함" ? 90 : 70;
-              
-              // 발표 태도 점수: 시선(40%) + 표정(30%) + 제스처(30%)
-              const attitudeScore = Math.round(gazeScoreVal * 0.4 + smileScoreVal * 0.3 + gestureScoreVal * 0.3);
-              
-              const voiceScore = summary.avg_speed > 0.5 && summary.avg_speed < 2.0 ? 90 : 70;
-              const contentScore = summary.ppt_summary !== "PPT 분석 데이터 없음" ? 85 : 50;
+              // --- 1. Content & Viz (50점 만점) ---
+              const hasPPT = summary.ppt_summary !== "PPT 분석 데이터 없음" && summary.ppt_summary !== "PPT 결과 파일 읽기 실패";
+              const logicScore = hasPPT ? 13 : 8; // 15점 만점
+              const headlineScore = hasPPT ? 9 : 5; // 10점 만점
+              const vizScore = hasPPT ? 13 : 7; // 15점 만점
+              const dataScore = hasPPT ? 9 : 5; // 10점 만점
+              const contentCategoryScore = logicScore + headlineScore + vizScore + dataScore;
+
+              // --- 2. Stability (30점 만점) ---
+              let voiceScoreBase = 8;
+              if (summary.avg_speed > 0) {
+                 const speedDiff = Math.abs(1.0 - summary.avg_speed);
+                 voiceScoreBase = Math.max(0, 10 - (speedDiff * 5));
+              }
+              const vocalStabilityScore = Math.round(voiceScoreBase);
+              const physicalPoiseScore = summary.gesture_status === "활발함" ? 9 : (summary.gesture_status === "정적임" ? 6 : 8);
+              const verbalFluencyScore = Math.round(voiceScoreBase); // 속도로 추정
+              const stabilityCategoryScore = vocalStabilityScore + physicalPoiseScore + verbalFluencyScore;
+
+              // --- 3. Non-verbal (20점 만점) ---
+              const eyeContactScore = Math.min(10, Math.round(summary.gaze_score * 10));
+              const smileScoreVal = Math.round(summary.smile_score * 5);
+              const gestureBonus = summary.gesture_status === "활발함" ? 5 : (summary.gesture_status === "정적임" ? 2 : 4);
+              const gestureExpScore = Math.min(10, smileScoreVal + gestureBonus);
+              const nonverbalCategoryScore = eyeContactScore + gestureExpScore;
 
               const calculatedScores: any = {
-                "attitude": { 
-                  category: attitudeScore, 
-                  items: [gazeScoreVal, smileScoreVal, gestureScoreVal] 
-                },
                 "content": { 
-                  category: contentScore, 
-                  items: [contentScore, contentScore - 5, contentScore + 5] 
+                  category: contentCategoryScore, 
+                  items: [logicScore, headlineScore, vizScore, dataScore] 
                 },
-                "voice": { 
-                  category: voiceScore, 
-                  items: [voiceScore, 85, 80, 85] 
+                "stability": { 
+                  category: stabilityCategoryScore, 
+                  items: [vocalStabilityScore, physicalPoiseScore, verbalFluencyScore] 
+                },
+                "nonverbal": { 
+                  category: nonverbalCategoryScore, 
+                  items: [eyeContactScore, gestureExpScore] 
                 }
               };
               saveAnalysisResultForSubmission(scopeId, submissionId, calculatedScores);
+              setScores(calculatedScores);
             });
           }
           
@@ -433,6 +450,8 @@ export function Analysis() {
           <div className="analysis-rubric">
             {RUBRIC.map((cat) => {
               const d = scores?.[cat.id];
+              const maxScore = cat.id === "content" ? 50 : (cat.id === "stability" ? 30 : 20);
+              const catMaxItems = cat.id === "content" ? [15, 10, 15, 10] : (cat.id === "stability" ? [10, 10, 10] : [10, 10]);
               return (
                 <div
                   key={cat.id}
@@ -448,7 +467,7 @@ export function Analysis() {
                         "analysis-cat__badge" + (!hasData ? " analysis-cat__badge--empty" : "")
                       }
                     >
-                      {d ? `${d.category}점` : "—"}
+                      {d ? `${d.category} / ${maxScore}점` : "—"}
                     </span>
                   </div>
                   <ul className="analysis-cat__items">
@@ -456,7 +475,7 @@ export function Analysis() {
                       <li key={label}>
                         <span className="analysis-cat__label">{label}</span>
                         <span className="analysis-cat__itemscore">
-                          {d?.items[i] ?? "—"}
+                          {d?.items[i] !== undefined ? `${d.items[i]} / ${catMaxItems[i]}` : "—"}
                         </span>
                       </li>
                     ))}
@@ -465,7 +484,7 @@ export function Analysis() {
                     <span
                       className={!hasData ? "analysis-bar__fill analysis-bar__fill--empty" : "analysis-bar__fill"}
                       style={
-                        hasData && d ? { width: `${Math.min(100, Math.max(0, d.category))}%` } : { width: 0 }
+                        hasData && d ? { width: `${Math.min(100, Math.max(0, (d.category / maxScore) * 100))}%` } : { width: 0 }
                       }
                     />
                   </div>
