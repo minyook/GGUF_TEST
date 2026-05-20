@@ -3,6 +3,7 @@ import os
 import time as timer 
 import traceback
 import json
+import threading
 
 # 모든 처리 모듈 임포트
 from processing.video_analyzer import extract_all_frames, extract_audio, analyze_frame_vision
@@ -53,8 +54,38 @@ def run_analysis_task(job_id: str, video_path: Path, frame_dir: Path, video_dir:
         frame_paths = extract_all_frames(video_path, frame_dir, FRAME_RATE)
         if not frame_paths: raise Exception("비디오 프레임 추출 실패.")
         
-        # 3. YOLO(제스처) + MediaPipe(표정/시선) 실시간 분석
-        print(f"\n[3/6] 👀 시각 데이터(YOLO & MediaPipe) 추출 중... (터미널 출력 생략)")
+        # ============================================================
+        # 🚀 [최적화] 비전 분석 + 오디오 분석을 병렬로 동시 실행
+        # ============================================================
+        job_status[job_id] = {"status": "Analyzing", "message": "3/6: 비전+오디오 병렬 분석 실행 중..."}
+        
+        # 오디오 분석 결과를 담을 컨테이너 (스레드 안전)
+        audio_result = {"segments": None, "error": None}
+        
+        def _run_audio_analysis():
+            """백그라운드 스레드에서 Whisper + Praat 음성 분석 실행"""
+            try:
+                print(f"\n[오디오 스레드] 🎤 로컬 음성 인식(Whisper) 실행 중...")
+                segments, err = transcribe_audio_with_timestamps(str(audio_path), video_filename=file_id)
+                audio_result["segments"] = segments
+                audio_result["error"] = err
+                
+                if segments:
+                    print(f"[오디오 스레드] ✅ 음성 인식 완료. 운율 분석 시작...")
+                    audio_result["segments"] = analyze_prosody_for_segments(audio_path, segments, video_filename=file_id)
+                    print(f"[오디오 스레드] ✅ 운율 분석 완료.")
+                else:
+                    print(f"[오디오 스레드] ⚠️ 음성 텍스트 추출 실패.")
+            except Exception as e:
+                print(f"[오디오 스레드] ❌ 오류: {e}")
+                audio_result["error"] = str(e)
+        
+        # 오디오 분석을 백그라운드 스레드로 시작
+        audio_thread = threading.Thread(target=_run_audio_analysis, daemon=True)
+        audio_thread.start()
+        
+        # 메인 스레드에서 비전 분석 실행 (동시에)
+        print(f"\n[3/6] 👀 시각 데이터(YOLO & MediaPipe) 추출 중... (오디오 분석과 병렬 실행)")
         for i, path in enumerate(frame_paths):
             current_time = i / FRAME_RATE
             frame = analyze_frame_vision(str(path), current_time)
@@ -85,20 +116,20 @@ def run_analysis_task(job_id: str, video_path: Path, frame_dir: Path, video_dir:
             cv2.imwrite(str(check_dir / "yolo_check.jpg"), debug_frame)
             print(f"   > 🖼️ [시각화 체크] 분석 샘플 이미지가 저장되었습니다: {check_dir / 'yolo_check.jpg'}")
 
-        # 4 & 5. Whisper 및 Praat 음성 분석
-        job_status[job_id] = {"status": "Analyzing", "message": "4/6: 로컬 음성 인식 실행 중..."}
-        # audio_analyzer.py 내부에서 파일 저장을 위해 file_id(video_filename)를 넘겨야 함
-        from processing.audio_analyzer import transcribe_audio_with_timestamps
-        audio_segments, whisper_error = transcribe_audio_with_timestamps(str(audio_path), video_filename=file_id)
+        # 오디오 스레드 완료 대기
+        print(f"\n⏳ 오디오 분석 스레드 완료 대기 중...")
+        audio_thread.join()
+        print(f"✅ 비전+오디오 병렬 분석 모두 완료!")
+        
+        # 오디오 결과 처리
+        audio_segments = audio_result["segments"]
+        whisper_error = audio_result["error"]
         
         if not audio_segments: 
             print(f"\n[4/6] ⚠️ 목소리 텍스트가 추출되지 않았습니다. (음성 분석 스킵)")
             aligned_data = [] 
         else:
-            print(f"\n[4/6] ✅ 로컬 음성 인식 완료.")
-            from processing.audio_analyzer import analyze_prosody_for_segments
-            audio_segments = analyze_prosody_for_segments(audio_path, audio_segments, video_filename=file_id)
-            print(f"\n[5/6] ✅ 운율 분석 완료.")
+            print(f"\n[4-5/6] ✅ 음성 인식 및 운율 분석 완료.")
             
             job_status[job_id] = {"status": "Analyzing", "message": "6/6: 데이터 정렬 중..."}
             aligned_data = align_data(all_vision_results, audio_segments)
@@ -173,7 +204,7 @@ def run_analysis_task(job_id: str, video_path: Path, frame_dir: Path, video_dir:
             "video_type": video_type.value
         }
 
-        # 7. AI 피드백 생성 (Fine-tuned EXAONE 모델 사용)
+        # 7. AI 피드백 생성 (Gemma 3 기반 코치 모델 사용)
         from core.feedback_engine import feedback_engine
         
         # [신규] 생성 중임을 알림 (CPU 모드 대응)
@@ -185,7 +216,7 @@ def run_analysis_task(job_id: str, video_path: Path, frame_dir: Path, video_dir:
         # 프로젝트 이름(file_id)을 기반으로 모든 데이터를 취합하여 피드백 생성
         llama_feedback = feedback_engine.generate_feedback(file_id, unified_rubric, persona)
         
-        print(f"\n{'='*20} 🤖 AI 발표 코치 피드백 (LoRA/RTX 5060 Ti) {'='*20}")
+        print(f"\n{'='*20} 🤖 AI 발표 코치 피드백 (Gemma 3 / Ollama GGUF) {'='*20}")
         print(llama_feedback)
 
         # 🌟 타임라인 피드백 생성 (실시간 자막용)

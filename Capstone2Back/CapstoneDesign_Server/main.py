@@ -2,13 +2,15 @@ import os
 import uvicorn
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
-import uuid 
+import uuid
 import asyncio
 import importlib.util
+import json
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, Depends, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import argparse
 import sys
 
@@ -94,10 +96,6 @@ async def lifespan(app: FastAPI):
     print("서버가 종료됩니다.")
     print("="*50)
 
-from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, Depends
-from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-import json
 
 app = FastAPI(lifespan=lifespan)
 
@@ -311,9 +309,9 @@ if __name__ == "__main__":
     # .\venv\Scripts\activate    빽에서python main.py  프론트에서 npm run dev  http://127.0.0.1:8000
     # pip install -r requirements.txt (라이브러리 설치)
     # winget install Gyan.FFmpeg
-    # ollama 홈페이지가서 다운로드
-    # exe 설치하고 vscode 껏다키기
-    # 가상환경이나 터미널가서 ollama pull llama3 (라마 다운로드)
+    # ollama 홈페이지에서 다운로드
+    # exe 설치하고 vscode 꺼다키기
+    # ollama create gemma-coach -f Modelfile.gemma-coach (모델 등록)
     # http://127.0.0.1:8000/chat
 
     # --------------핸드폰으로 실행 방법-----------------
@@ -326,7 +324,7 @@ if __name__ == "__main__":
 
     # 💻 [노트북 시연 가이드] - 모델 실행 및 환경 설정
     # 1. 필수 파일/폴더 이동 (데스크탑 -> 노트북)
-     #    - LoRA 어댑터: training/exaone_presenter_lora (전체 폴더)
+     #    - LoRA 어댑터: training/gemma_presenter_lora (전체 폴더)
      #    - 데이터셋: training/dataset.json
      #    - 프론트엔드 설정: .env (Firebase Key)
      #    - 백엔드 소스: core/, processing/, utils/, schemas/, main.py

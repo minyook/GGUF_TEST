@@ -115,10 +115,10 @@ def analyze_frame_vision(frame_path: str, time_s: float) -> FrameVisionResult:
 
                     roi_img = img[target_y1:target_y2, target_x1:target_x2]
 
-                    # 2. 업스케일링 및 이미지 개선 (Sharpening)
+                    # 2. 업스케일링 및 이미지 개선 (Sharpening) — 임계값 480→320 최적화
                     roi_h, roi_w = roi_img.shape[:2]
-                    if roi_w < 480 or roi_h < 480: # 더 높은 해상도 확보
-                        scale = max(480/roi_w, 480/roi_h)
+                    if roi_w < 320 or roi_h < 320:
+                        scale = max(320/roi_w, 320/roi_h)
                         roi_img = cv2.resize(roi_img, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_LANCZOS4)
                         
                         # 약간의 선명도 개선
@@ -126,18 +126,6 @@ def analyze_frame_vision(frame_path: str, time_s: float) -> FrameVisionResult:
                         roi_img = cv2.filter2D(roi_img, -1, kernel)
 
                     face = analyze_frame_face(roi_img)
-                    
-                    if not face.has_face:
-                        # 1차 실패 시: 박스 상단 60% 전체를 정방형으로 크롭하여 재시도
-                        alt_y2 = y1 + int((y2 - y1) * 0.6)
-                        roi_img_alt = img[y1:alt_y2, x1:x2]
-                        ah, aw = roi_img_alt.shape[:2]
-                        
-                        s = max(480/aw, 480/ah)
-                        roi_img_alt = cv2.resize(roi_img_alt, (0,0), fx=s, fy=s, interpolation=cv2.INTER_LANCZOS4)
-                        face_alt = analyze_frame_face(roi_img_alt)
-                        if face_alt.has_face:
-                            face = face_alt
         except Exception as e:
             print(f"{log_prefix} ROI 처리 중 예외 발생: {e}")
 
